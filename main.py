@@ -2,9 +2,9 @@ import telebot
 from PIL import Image
 import io
 from telebot import types
+from token_ import TOKEN_
 
 
-TOKEN_ = '7329039912:AAEWCTtkdxtXgTe9EiKXOj-h_EMCL7KtVMo'
 bot = telebot.TeleBot(TOKEN_)
 
 # тут будем хранить информацию о действиях пользователя
