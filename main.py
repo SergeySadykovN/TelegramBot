@@ -9,8 +9,8 @@ bot = telebot.TeleBot(TOKEN_)
 # тут будем хранить информацию о действиях пользователя
 user_states = {}
 
-# набор символов из которых составляем изображение
-ASCII_CHARS = '@$%#*+=-:. '
+# набор стандартных символов для эффекта ASCII по умолчанию
+ascii_symbols_stock = '@$%#*+=-:. '
 
 
 def resize_image(image: Image.Image, new_width: int = 100) -> Image.Image:
@@ -96,7 +96,7 @@ def send_welcome(message: telebot.types.Message):
     """Обработка команд /start и /help.
     :param message: (telebot.types.Message) Сообщение от пользоваиеля
     """
-    bot.reply_to(message, "Send me an image, and I'll provide options for you!")
+    bot.reply_to(message, "Пришлите мне изображение, и я предложу вам варианты!")
 
 
 @bot.message_handler(content_types=['photo'])
@@ -104,7 +104,8 @@ def handle_photo(message: telebot.types.Message):
     """ Обработка фотографий
     :param message: (telebot.types.Message) Сообщение с фотографией от пользоваиеля
     """
-    bot.reply_to(message, "I got your photo! Please choose what you'd like to do with it.",
+    bot.reply_to(message,
+                 "Я получил вашу фотографию! Пожалуйста, выберите, что бы вы хотите с ней сделать?",
                  reply_markup=get_options_keyboard())
     user_states[message.chat.id] = {'photo': message.photo[-1].file_id}
 
@@ -126,13 +127,14 @@ def callback_query(call: telebot.types.CallbackQuery):
     :return (telebot.types.CallbackQuery) Объект с инфо о нажатой кнопке
     """
     if call.data == "pixelate":
-        bot.answer_callback_query(call.id, "Pixelating your image...")
+        bot.answer_callback_query(call.id, "Пикселизация изображения...")
         pixelate_and_send(call.message)
     elif call.data == "ascii":
         bot.answer_callback_query(call.id, "Converting your image to ASCII art...")
         bot.send_message(call.message.chat.id, "Введите набор символов для ASCII-арта, "
                                                "начиная с самых темных к самым светлым,"
-                                               "например ЖХУИЪЬою:,.")
+                                               "например ЖХУИЪЬою:,"
+                                               "\nИли напишите 'default' для использования стандартного набора символов")
         bot.register_next_step_handler(call.message, ask_for_ascii_chairs)
 
 
@@ -141,6 +143,8 @@ def ask_for_ascii_chairs(message: telebot.types.Message):
     :param message: (telebot.types.Message) Сообщение от пользователя с набором символов
     """
     ascii_chairs = message.text
+    if ascii_chairs.lower() == 'default':
+        ascii_chairs = ascii_symbols_stock
     user_states[message.chat.id]['ascii_chairs'] = ascii_chairs
     ascii_and_send(message)
 
