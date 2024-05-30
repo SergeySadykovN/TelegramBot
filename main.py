@@ -10,7 +10,7 @@ bot = telebot.TeleBot(TOKEN_)
 user_states = {}
 
 # набор символов из которых составляем изображение
-ASCII_CHARS = '@%#*+=-:. '
+ASCII_CHARS = '@$%#*+=-:. '
 
 
 def resize_image(image: Image.Image, new_width: int = 100) -> Image.Image:
@@ -32,10 +32,11 @@ def grayify(image: Image.Image) -> Image.Image:
     return image.convert("L")
 
 
-def image_to_ascii(image_stream: io.BytesIO, new_width: int = 40) -> str:
+def image_to_ascii(image_stream: io.BytesIO, ascii_chars: str, new_width: int = 40) -> str:
     """Конвертация изображения в ASCII-арт.
     :param image_stream: (io.BytesIO) поток байтов изображения
     :param new_width: (int) Новая ширина изображения для ASCII
+    :param ascii_chars: (str) Набор символов для ASCII-арта
     :return: (str) Строка символов  c артом ASCII
     """
     # Переводим в оттенки серого
@@ -44,11 +45,10 @@ def image_to_ascii(image_stream: io.BytesIO, new_width: int = 40) -> str:
     # меняем размер сохраняя отношение сторон
     width, height = image.size
     aspect_ratio = height / float(width)
-    new_height = int(
-        aspect_ratio * new_width * 0.55)  # 0,55 так как буквы выше чем шире
+    new_height = int(aspect_ratio * new_width * 0.55)  # 0,55 так как буквы выше чем шире
     img_resized = image.resize((new_width, new_height))
 
-    img_str = pixels_to_ascii(img_resized)
+    img_str = pixels_to_ascii(img_resized, ascii_chars)
     img_width = img_resized.width
 
     max_characters = 4000 - (new_width + 1)
@@ -61,15 +61,16 @@ def image_to_ascii(image_stream: io.BytesIO, new_width: int = 40) -> str:
     return ascii_art
 
 
-def pixels_to_ascii(image: Image.Image) -> str:
+def pixels_to_ascii(image: Image.Image, ascii_chars: str) -> str:
     """Преобразование пикселей в ASCII-symbols
-    :param image: (Image.Image) Изображение в оттенках серого
+    :param image: (Image.Image) Изображение в оттенках
+    :param ascii_chars: (str) Набор символов для ASCII-арта
     :return (str) Строка символов ASCII
     """
     pixels = image.getdata()
     characters = ""
     for pixel in pixels:
-        characters += ASCII_CHARS[pixel * len(ASCII_CHARS) // 256]
+        characters += ascii_chars[pixel * len(ascii_chars) // 256]
     return characters
 
 
@@ -129,7 +130,19 @@ def callback_query(call: telebot.types.CallbackQuery):
         pixelate_and_send(call.message)
     elif call.data == "ascii":
         bot.answer_callback_query(call.id, "Converting your image to ASCII art...")
-        ascii_and_send(call.message)
+        bot.send_message(call.message.chat.id, "Введите набор символов для ASCII-арта, "
+                                               "начиная с самых темных к самым светлым,"
+                                               "например ЖХУИЪЬою:,.")
+        bot.register_next_step_handler(call.message, ask_for_ascii_chairs)
+
+
+def ask_for_ascii_chairs(message: telebot.types.Message):
+    """Запрос набора символов для арта ASCII
+    :param message: (telebot.types.Message) Сообщение от пользователя с набором символов
+    """
+    ascii_chairs = message.text
+    user_states[message.chat.id]['ascii_chairs'] = ascii_chairs
+    ascii_and_send(message)
 
 
 def pixelate_and_send(message: telebot.types.Message):
@@ -160,7 +173,8 @@ def ascii_and_send(message: telebot.types.Message):
     downloaded_file = bot.download_file(file_info.file_path)
 
     image_stream = io.BytesIO(downloaded_file)
-    ascii_art = image_to_ascii(image_stream)
+    ascii_chars = user_states[message.chat.id].get('ascii_chairs', '@%#*+=-:. ')
+    ascii_art = image_to_ascii(image_stream, ascii_chars)
     bot.send_message(message.chat.id, f"```\n{ascii_art}\n```", parse_mode="MarkdownV2")
 
 
