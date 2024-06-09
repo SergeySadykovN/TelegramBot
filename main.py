@@ -206,9 +206,10 @@ def get_options_keyboard():
     random_joke_btn = types.InlineKeyboardButton("Случайная шутка", callback_data="random_joke")  # кнопка для шутки
     compliment_btn = types.InlineKeyboardButton("Случайный комплимент",
                                                 callback_data="compliment")  # кнопка для комплимента
+    coin_flip_btn = types.InlineKeyboardButton("Орел или Решка", callback_data="coin_flip")
 
     keyboard.add(pixelate_btn, ascii_btn, invert_btn, mirror_horizont_btn,
-                 mirror_vert_btn, heatmap_btn, sticker_btn, random_joke_btn, compliment_btn
+                 mirror_vert_btn, heatmap_btn, sticker_btn, random_joke_btn, compliment_btn, coin_flip_btn
                  )
     return keyboard
 
@@ -250,6 +251,9 @@ def callback_query(call: telebot.types.CallbackQuery):
     elif call.data == "compliment":
         bot.answer_callback_query(call.id, "Sending you a random compliment...")
         send_random_compliment(call.message)
+    elif call.data == "coin_flip":
+        bot.answer_callback_query(call.id, "Flipping a coin...")
+        flip_coin_and_send(call.message)
 
 
 def ask_for_ascii_chairs(message: telebot.types.Message):
@@ -386,6 +390,14 @@ def send_random_compliment(message: telebot.types.Message):
     """
     compliment = choice(COMPLIMENTS)
     bot.send_message(message.chat.id, compliment)
+
+
+def flip_coin_and_send(message: telebot.types.Message):
+    """Подбрасывание монетки и отправка результата
+    :param message: (telebot.types.Message) Сообщение от пользователя
+    """
+    result = choice(["Орел", "Решка"])
+    bot.send_message(message.chat.id, f"Выпало: {result}")
 
 
 bot.polling(none_stop=True)
