@@ -156,6 +156,18 @@ JOKES = [
     "Что говорит программист, когда его спрашивают, как он провёл выходные? «Я писал код!»",
     "Почему программист всегда выбирает тёмный фон для своего рабочего стола? Потому что он любит, чтобы всё было чётко и ясно!"
 ]
+COMPLIMENTS = [
+    "Вы прекрасны сегодня!",
+    "У вас замечательный вкус!",
+    "Вы делаете мир лучше!",
+    "Ваша улыбка заразительна!",
+    "Ваши достижения впечатляют!",
+    "Вас окружает так много позитивной энергии!",
+    "Вы вдохновляете других!",
+    "Сегодня - ваш день!",
+    "Вы достойны любви и уважения!",
+    "Ваши идеи уникальны и ценны!",
+]
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -191,10 +203,12 @@ def get_options_keyboard():
                                                  callback_data="mirror_vertical")  # кнопка для mirror vertical
     heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")  # кнопка для тепловой карты
     sticker_btn = types.InlineKeyboardButton("Преобразовать в стикер", callback_data="sticker")  # кнопка для стикера
-    random_joke_btn = types.InlineKeyboardButton("Случайная шутка", callback_data="random_joke")
+    random_joke_btn = types.InlineKeyboardButton("Случайная шутка", callback_data="random_joke")  # кнопка для шутки
+    compliment_btn = types.InlineKeyboardButton("Случайный комплимент",
+                                                callback_data="compliment")  # кнопка для комплимента
 
     keyboard.add(pixelate_btn, ascii_btn, invert_btn, mirror_horizont_btn,
-                 mirror_vert_btn, heatmap_btn, sticker_btn, random_joke_btn
+                 mirror_vert_btn, heatmap_btn, sticker_btn, random_joke_btn, compliment_btn
                  )
     return keyboard
 
@@ -233,6 +247,9 @@ def callback_query(call: telebot.types.CallbackQuery):
     elif call.data == "random_joke":
         bot.answer_callback_query(call.id, "Выбираю случайную шутку...")
         send_random_joke(call.message)
+    elif call.data == "compliment":
+        bot.answer_callback_query(call.id, "Sending you a random compliment...")
+        send_random_compliment(call.message)
 
 
 def ask_for_ascii_chairs(message: telebot.types.Message):
@@ -361,6 +378,14 @@ def send_random_joke(message: telebot.types.Message):
     """
     joke = choice(JOKES)
     bot.send_message(message.chat.id, joke)
+
+
+def send_random_compliment(message: telebot.types.Message):
+    """Отправка случайного комплимента
+    :param message: (telebot.types.Message) Сообщение от пользователя
+    """
+    compliment = choice(COMPLIMENTS)
+    bot.send_message(message.chat.id, compliment)
 
 
 bot.polling(none_stop=True)
