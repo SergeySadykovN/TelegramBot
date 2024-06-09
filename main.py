@@ -3,6 +3,7 @@ from PIL import Image, ImageOps
 import io
 from telebot import types
 from token_ import TOKEN_
+from random import choice
 
 bot = telebot.TeleBot(TOKEN_)
 
@@ -143,6 +144,20 @@ def resize_for_sticker(image: Image.Image, max_dimension: int = 512) -> Image.Im
     return image.resize((new_width, new_height))
 
 
+JOKES = [
+    "Почему программист никогда не опаздывает на работу? Потому что он всегда пишет код вовремя!",
+    "Почему программист не ходит в спортзал? Потому что он и так каждый день поднимает свой ноутбук!",
+    "Что такое бесконечный цикл в программировании? Это когда ты пишешь код и не можешь остановиться, потому что он работает без остановки!",
+    "Почему программист всегда выбирает макароны на обед? Потому что они просты в приготовлении и не требуют много времени!",
+    "Что говорит программист, когда его просят написать простую программу? «Это будет непросто!»"
+    "Почему программист всегда носит с собой кружку? Потому что он всегда готов к кофе-брейку!",
+    "Что делает программист, когда ему скучно? Пишет код!",
+    "Почему программист никогда не жалуется на свою работу? Потому что он знает, что его работа — это его страсть!",
+    "Что говорит программист, когда его спрашивают, как он провёл выходные? «Я писал код!»",
+    "Почему программист всегда выбирает тёмный фон для своего рабочего стола? Потому что он любит, чтобы всё было чётко и ясно!"
+]
+
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message: telebot.types.Message):
     """Обработка команд /start и /help.
@@ -176,8 +191,11 @@ def get_options_keyboard():
                                                  callback_data="mirror_vertical")  # кнопка для mirror vertical
     heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")  # кнопка для тепловой карты
     sticker_btn = types.InlineKeyboardButton("Преобразовать в стикер", callback_data="sticker")  # кнопка для стикера
+    random_joke_btn = types.InlineKeyboardButton("Случайная шутка", callback_data="random_joke")
 
-    keyboard.add(pixelate_btn, ascii_btn, invert_btn, mirror_horizont_btn, mirror_vert_btn, heatmap_btn, sticker_btn)
+    keyboard.add(pixelate_btn, ascii_btn, invert_btn, mirror_horizont_btn,
+                 mirror_vert_btn, heatmap_btn, sticker_btn, random_joke_btn
+                 )
     return keyboard
 
 
@@ -212,6 +230,9 @@ def callback_query(call: telebot.types.CallbackQuery):
     elif call.data == "sticker":
         bot.answer_callback_query(call.id, "Преобразование вашего изображения в стикер...")
         sticker_and_send(call.message)
+    elif call.data == "random_joke":
+        bot.answer_callback_query(call.id, "Выбираю случайную шутку...")
+        send_random_joke(call.message)
 
 
 def ask_for_ascii_chairs(message: telebot.types.Message):
@@ -332,6 +353,14 @@ def sticker_and_send(message: telebot.types.Message):
     sticker.save(output_stream, format="JPEG")
     output_stream.seek(0)
     bot.send_photo(message.chat.id, output_stream)
+
+
+def send_random_joke(message: telebot.types.Message):
+    """Отправка случайной шутки
+    :param message: (telebot.types.Message) Сообщение от пользователя
+    """
+    joke = choice(JOKES)
+    bot.send_message(message.chat.id, joke)
 
 
 bot.polling(none_stop=True)
