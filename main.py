@@ -32,6 +32,17 @@ def grayify(image: Image.Image) -> Image.Image:
     return image.convert("L")
 
 
+def convert_to_heatmap(image: Image.Image) -> Image.Image:
+    """
+    Преобразование изображения в тепловую карту
+    :param image: (Image.Image) Исходное изображение
+    :return: (Image.Image) Изображение в виде тепловой карты
+    """
+    grayscale_image = grayify(image)
+    heatmap_image = ImageOps.colorize(grayscale_image, black="blue", white="red")
+    return heatmap_image
+
+
 def image_to_ascii(image_stream: io.BytesIO, ascii_chars: str, new_width: int = 40) -> str:
     """Конвертация изображения в ASCII-арт.
     :param image_stream: (io.BytesIO) поток байтов изображения
@@ -139,13 +150,14 @@ def get_options_keyboard():
     :return (types.InlineKeyboardMarkup) клава с кнопками для выбора оброботки
     """
     keyboard = types.InlineKeyboardMarkup()
-    pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
-    ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
-    invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")
-    mirror_horizont_btn = types.InlineKeyboardButton("Mirror horizontal", callback_data="mirror_horizontal")
-    mirror_vert_btn = types.InlineKeyboardButton("Mirror Vertical", callback_data="mirror_vertical")
+    pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate") # кнопка для pixelate
+    ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii") # кнопка для ascii
+    invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert") # кнопка для invert
+    mirror_horizont_btn = types.InlineKeyboardButton("Mirror horizontal", callback_data="mirror_horizontal") # кнопка для mirror horizontal
+    mirror_vert_btn = types.InlineKeyboardButton("Mirror Vertical", callback_data="mirror_vertical") # кнопка для mirror vertical
+    heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")  # кнопка для тепловой карты
 
-    keyboard.add(pixelate_btn, ascii_btn, invert_btn, mirror_horizont_btn, mirror_vert_btn)
+    keyboard.add(pixelate_btn, ascii_btn, invert_btn, mirror_horizont_btn, mirror_vert_btn, heatmap_btn)
     return keyboard
 
 
@@ -174,6 +186,9 @@ def callback_query(call: telebot.types.CallbackQuery):
     elif call.data == "mirror_vertical":
         bot.answer_callback_query(call.id, "Mirroring your image vertically...")
         mirror_and_send(call.message, "vertical")
+    elif call.data == "heatmap":
+        bot.answer_callback_query(call.id, "Converting your image to a heatmap...")
+        heatmap_and_send(call.message)
 
 
 def ask_for_ascii_chairs(message: telebot.types.Message):
@@ -254,6 +269,25 @@ def mirror_and_send(message: telebot.types.Message, mode: str):
 
     output_stream = io.BytesIO()
     mirrored.save(output_stream, format="JPEG")
+    output_stream.seek(0)
+    bot.send_photo(message.chat.id, output_stream)
+
+
+def heatmap_and_send(message: telebot.types.Message):
+    """
+    Преобразование и отправка изображения в тепловую карту
+    :param message: (telebot.types.Message) Сообщение от пользователя
+    """
+    photo_id = user_states[message.chat.id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+    heatmap_image = convert_to_heatmap(image)
+
+    output_stream = io.BytesIO()
+    heatmap_image.save(output_stream, format="JPEG")
     output_stream.seek(0)
     bot.send_photo(message.chat.id, output_stream)
 
