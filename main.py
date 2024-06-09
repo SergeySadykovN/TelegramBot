@@ -1,9 +1,8 @@
 import telebot
-from PIL import Image
+from PIL import Image, ImageOps
 import io
 from telebot import types
 from token_ import TOKEN_
-
 
 bot = telebot.TeleBot(TOKEN_)
 
@@ -92,6 +91,15 @@ def pixelate_image(image: Image.Image, pixel_size: int) -> Image.Image:
     return image
 
 
+def invert_colors(image: Image.Image) -> Image.Image:
+    """
+    Инверсия цветов изображения
+    :param image: (Image.Image) Исходное изображение
+    :return: (Image.Image)  Изображение с инверсией цветов
+    """
+    return ImageOps.invert(image)
+
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message: telebot.types.Message):
     """Обработка команд /start и /help.
@@ -118,7 +126,8 @@ def get_options_keyboard():
     keyboard = types.InlineKeyboardMarkup()
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
-    keyboard.add(pixelate_btn, ascii_btn)
+    invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")
+    keyboard.add(pixelate_btn, ascii_btn, invert_btn)
     return keyboard
 
 
@@ -137,6 +146,10 @@ def callback_query(call: telebot.types.CallbackQuery):
                                                "например ЖХУИЪЬою:,"
                                                "\nИли напишите 'default' для использования стандартного набора символов")
         bot.register_next_step_handler(call.message, ask_for_ascii_chairs)
+
+    elif call.data == "invert":
+        bot.answer_callback_query(call.id, "Inverting colors of your image...")
+        invert_and_send(call.message)
 
 
 def ask_for_ascii_chairs(message: telebot.types.Message):
@@ -181,6 +194,25 @@ def ascii_and_send(message: telebot.types.Message):
     ascii_chars = user_states[message.chat.id].get('ascii_chairs', '@%#*+=-:. ')
     ascii_art = image_to_ascii(image_stream, ascii_chars)
     bot.send_message(message.chat.id, f"```\n{ascii_art}\n```", parse_mode="MarkdownV2")
+
+
+def invert_and_send(message: telebot.types.Message):
+    """
+    Инверсия цветов  и отправка изображения
+    :param message: (telebot.types.Message) Сообщение от пользователя
+    """
+    photo_id = user_states[message.chat.id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+    inverted = invert_colors(image)
+
+    output_stream = io.BytesIO()
+    inverted.save(output_stream, format='JPEG')
+    output_stream.seek(0)
+    bot.send_photo(message.chat.id, output_stream)
 
 
 bot.polling(none_stop=True)
