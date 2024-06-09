@@ -126,6 +126,23 @@ def mirror_image(image: Image.Image, mode: str) -> Image.Image:
         raise ValueError("Invalid mode for mirroring image. Use 'vertical' or 'horizontal'")
 
 
+def resize_for_sticker(image: Image.Image, max_dimension: int = 512) -> Image.Image:
+    """
+    Изменение размера изображения для использования в качестве стикера в Telegram.
+    :param image: (Image.Image) Исходное изображение
+    :param max_dimension: (int) Максимальный размер измерения (по умолчанию 512 пикселей)
+    :return: (Image.Image) Изображение с измененными размерами
+    """
+    width, height = image.size
+    if width > height:
+        new_width = max_dimension
+        new_height = int(height * (max_dimension / width))
+    else:
+        new_height = max_dimension
+        new_width = int(width * (max_dimension / height))
+    return image.resize((new_width, new_height))
+
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message: telebot.types.Message):
     """Обработка команд /start и /help.
@@ -150,14 +167,17 @@ def get_options_keyboard():
     :return (types.InlineKeyboardMarkup) клава с кнопками для выбора оброботки
     """
     keyboard = types.InlineKeyboardMarkup()
-    pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate") # кнопка для pixelate
-    ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii") # кнопка для ascii
-    invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert") # кнопка для invert
-    mirror_horizont_btn = types.InlineKeyboardButton("Mirror horizontal", callback_data="mirror_horizontal") # кнопка для mirror horizontal
-    mirror_vert_btn = types.InlineKeyboardButton("Mirror Vertical", callback_data="mirror_vertical") # кнопка для mirror vertical
+    pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")  # кнопка для pixelate
+    ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")  # кнопка для ascii
+    invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")  # кнопка для invert
+    mirror_horizont_btn = types.InlineKeyboardButton("Mirror horizontal",
+                                                     callback_data="mirror_horizontal")  # кнопка для mirror horizontal
+    mirror_vert_btn = types.InlineKeyboardButton("Mirror Vertical",
+                                                 callback_data="mirror_vertical")  # кнопка для mirror vertical
     heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")  # кнопка для тепловой карты
+    sticker_btn = types.InlineKeyboardButton("Преобразовать в стикер", callback_data="sticker")  # кнопка для стикера
 
-    keyboard.add(pixelate_btn, ascii_btn, invert_btn, mirror_horizont_btn, mirror_vert_btn, heatmap_btn)
+    keyboard.add(pixelate_btn, ascii_btn, invert_btn, mirror_horizont_btn, mirror_vert_btn, heatmap_btn, sticker_btn)
     return keyboard
 
 
@@ -189,6 +209,9 @@ def callback_query(call: telebot.types.CallbackQuery):
     elif call.data == "heatmap":
         bot.answer_callback_query(call.id, "Converting your image to a heatmap...")
         heatmap_and_send(call.message)
+    elif call.data == "sticker":
+        bot.answer_callback_query(call.id, "Преобразование вашего изображения в стикер...")
+        sticker_and_send(call.message)
 
 
 def ask_for_ascii_chairs(message: telebot.types.Message):
@@ -288,6 +311,25 @@ def heatmap_and_send(message: telebot.types.Message):
 
     output_stream = io.BytesIO()
     heatmap_image.save(output_stream, format="JPEG")
+    output_stream.seek(0)
+    bot.send_photo(message.chat.id, output_stream)
+
+
+def sticker_and_send(message: telebot.types.Message):
+    """
+    Преобразование изображения в стикер и отправка результата
+    :param message: (telebot.types.Message) Сообщение от пользователя
+    """
+    photo_id = user_states[message.chat.id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+    sticker = resize_for_sticker(image)
+
+    output_stream = io.BytesIO()
+    sticker.save(output_stream, format="JPEG")
     output_stream.seek(0)
     bot.send_photo(message.chat.id, output_stream)
 
