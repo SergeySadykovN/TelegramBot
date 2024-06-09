@@ -100,6 +100,21 @@ def invert_colors(image: Image.Image) -> Image.Image:
     return ImageOps.invert(image)
 
 
+def mirror_image(image: Image.Image, mode: str) -> Image.Image:
+    """
+    Отражение изображения
+    :param image: (Image.Image) Исходное изображение
+    :param mode: (str) Режим отражения ("horizontal" или "vertical")
+    :return: (image.Image) Отраженнное изображения
+    """
+    if mode == "horizontal":
+        return image.transpose(Image.FLIP_LEFT_RIGHT)
+    elif mode == "vertical":
+        return image.transpose(Image.FLIP_TOP_BOTTOM)
+    else:
+        raise ValueError("Invalid mode for mirroring image. Use 'vertical' or 'horizontal'")
+
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message: telebot.types.Message):
     """Обработка команд /start и /help.
@@ -127,7 +142,10 @@ def get_options_keyboard():
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
     invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")
-    keyboard.add(pixelate_btn, ascii_btn, invert_btn)
+    mirror_horizont_btn = types.InlineKeyboardButton("Mirror horizontal", callback_data="mirror_horizontal")
+    mirror_vert_btn = types.InlineKeyboardButton("Mirror Vertical", callback_data="mirror_vertical")
+
+    keyboard.add(pixelate_btn, ascii_btn, invert_btn, mirror_horizont_btn, mirror_vert_btn)
     return keyboard
 
 
@@ -150,16 +168,22 @@ def callback_query(call: telebot.types.CallbackQuery):
     elif call.data == "invert":
         bot.answer_callback_query(call.id, "Inverting colors of your image...")
         invert_and_send(call.message)
+    elif call.data == "mirror_horizontal":
+        bot.answer_callback_query(call.id, "Mirroring your image horizontally...")
+        mirror_and_send(call.message, "horizontal")
+    elif call.data == "mirror_vertical":
+        bot.answer_callback_query(call.id, "Mirroring your image vertically...")
+        mirror_and_send(call.message, "vertical")
 
 
 def ask_for_ascii_chairs(message: telebot.types.Message):
     """Запрос набора символов для арта ASCII
     :param message: (telebot.types.Message) Сообщение от пользователя с набором символов
     """
-    ascii_chairs = message.text
-    if ascii_chairs.lower() == 'default':
-        ascii_chairs = ascii_symbols_stock
-    user_states[message.chat.id]['ascii_chairs'] = ascii_chairs
+    ascii_chars = message.text
+    if ascii_chars.lower() == 'default':
+        ascii_chars = ascii_symbols_stock
+    user_states[message.chat.id]['ascii_chairs'] = ascii_chars
     ascii_and_send(message)
 
 
@@ -211,6 +235,25 @@ def invert_and_send(message: telebot.types.Message):
 
     output_stream = io.BytesIO()
     inverted.save(output_stream, format='JPEG')
+    output_stream.seek(0)
+    bot.send_photo(message.chat.id, output_stream)
+
+
+def mirror_and_send(message: telebot.types.Message, mode: str):
+    """Отражение и отправка изображения
+    :param message: (telebot.types.Message) Сообщение от пользователя
+    :param mode: (str) Режим отражения ("horizontal", "vertical" )
+    """
+    photo_id = user_states[message.chat.id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+    mirrored = mirror_image(image, mode)
+
+    output_stream = io.BytesIO()
+    mirrored.save(output_stream, format="JPEG")
     output_stream.seek(0)
     bot.send_photo(message.chat.id, output_stream)
 
